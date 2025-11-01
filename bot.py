@@ -175,7 +175,7 @@ async def main():
 
         logging.info("🤖 Бот запущен и готов к работе.")
         await asyncio.gather(
-            send_notifications(app),
+            send_notifications(app),  # ✅ правильное имя функции
             app.run_polling()
         )
     except Exception as e:
