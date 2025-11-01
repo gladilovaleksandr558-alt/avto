@@ -183,8 +183,17 @@ async def main():
     asyncio.create_task(send_notifications(app))
     await app.run_polling()
 
+import asyncio
+import sys
+
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
-    except Exception as e:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            logging.warning("⚠️ Цикл уже запущен. Пропускаем повторный запуск.")
+        else:
+            loop.run_until_complete(main())
+    except RuntimeError as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
+    except Exception as e:
+        logging.error(f"❌ Неожиданная ошибка: {e}")
