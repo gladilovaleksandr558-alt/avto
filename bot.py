@@ -157,12 +157,25 @@ async def send_notifications(app):
         for item in new_ads:
             user_id = int(item['user_id'])
             for ad in item['new_ads']:
-                msg = f"📌 {ad['title']}\n💰 {ad['price']}\n🔗 {ad['link']}"
+                msg = (
+                    f"<b>{ad['title']}</b>\n"
+                    f"💰 {ad['price']}\n"
+                    f"<a href='{ad['link']}'>Открыть объявление</a>"
+                )
                 try:
                     if ad.get('image'):
-                        await app.bot.send_photo(chat_id=user_id, photo=ad['image'], caption=msg)
+                        await app.bot.send_photo(
+                            chat_id=user_id,
+                            photo=ad['image'],
+                            caption=msg,
+                            parse_mode="HTML"
+                        )
                     else:
-                        await app.bot.send_message(chat_id=user_id, text=msg)
+                        await app.bot.send_message(
+                            chat_id=user_id,
+                            text=msg,
+                            parse_mode="HTML"
+                        )
                     await asyncio.sleep(1.5)
                 except Exception as e:
                     logging.error(f"Ошибка отправки: {e}")
@@ -190,6 +203,4 @@ async def main():
     except Exception as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
 
-# Railway-safe запуск
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+#
