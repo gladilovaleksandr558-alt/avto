@@ -57,29 +57,6 @@ class AdvertisementMonitor:
                 link = ad.find('a', href=True)
                 image_tag = ad.find('img')
                 image_url = image_tag['src'] if image_tag and image_tag.has_attr('src') else None
-                date_tag = ad.find('div', {'data-marker': 'item-date'})
-
-                # ⏱️ Фильтр: объявления до 2 часов назад
-                if date_tag:
-                    date_text = date_tag.get_text(strip=True).lower()
-                    if "минут" in date_text:
-                        try:
-                            minutes_ago = int(date_text.split()[0])
-                            if minutes_ago > 120:
-                                continue
-                        except:
-                            continue
-                    elif "час" in date_text:
-                        try:
-                            hours_ago = int(date_text.split()[0])
-                            if hours_ago > 2:
-                                continue
-                        except:
-                            continue
-                    elif "только что" in date_text:
-                        pass
-                    else:
-                        continue
 
                 if title and link:
                     full_link = link['href']
@@ -117,9 +94,10 @@ class AdvertisementMonitor:
         return new_ads_found
 
 monitor = AdvertisementMonitor()
+
 # Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Отправь ссылку на страницу с объявлениями Avito, и я буду присылать уведомления о новых!")
+    await update.message.reply_text("👋 Отправь ссылку на Avito, и я буду присылать новые объявления!")
 
 async def add_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -141,7 +119,7 @@ async def list_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     msg = "📋 Ваши отслеживания:\n\n"
     for i, (url_hash, data) in enumerate(trackings.items(), 1):
-        msg += f"{i}. {data['url']}\n📌 Объявлений: {len(data.get('last_ads', []))}\n🆔 ID: {url_hash[:8]}...\n\n"
+        msg += f"{i}. {data['url']}\n🆔 ID: {url_hash[:8]}...\n\n"
     await update.message.reply_text(msg)
 
 async def remove_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -168,7 +146,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Отправьте ссылку на страницу с объявлениями Avito.")
 
-# ✅ Команда /force — ручная проверка
 async def force_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     new_ads = monitor.check_for_new_ads()
@@ -196,7 +173,6 @@ async def force_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if count == 0:
         await update.message.reply_text("🔍 Новых объявлений не найдено.")
 
-# Цикл уведомлений
 async def send_notifications(app):
     while True:
         new_ads = monitor.check_for_new_ads()
@@ -227,10 +203,9 @@ async def send_notifications(app):
                     logging.error(f"Ошибка отправки: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
-# Railway-safe запуск
 async def main():
     if not BOT_TOKEN:
-        logging.error("❌ Переменная BOT_TOKEN не задана. Проверь config.py и Railway Variables.")
+        logging.error("❌ BOT_TOKEN не задан. Проверь config.py или Railway Variables.")
         return
 
     app = Application.builder().token(BOT_TOKEN).build()
