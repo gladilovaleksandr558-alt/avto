@@ -93,7 +93,6 @@ class AdvertisementMonitor:
 
 monitor = AdvertisementMonitor()
 
-# Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Отправь ссылку на Avito, и я буду присылать новые объявления каждые 5 минут!")
 
@@ -138,7 +137,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Отправьте ссылку на страницу с объявлениями Avito.")
 
-# Цикл уведомлений каждые 5 минут
 async def send_notifications(app):
     while True:
         new_ads = monitor.check_for_new_ads()
@@ -169,7 +167,6 @@ async def send_notifications(app):
                     logging.error(f"Ошибка отправки: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
-# Railway-safe запуск
 async def main():
     if not BOT_TOKEN:
         logging.error("❌ BOT_TOKEN не задан. Проверь config.py или Railway Variables.")
