@@ -64,13 +64,16 @@ class AdvertisementMonitor:
                     full_link = link['href']
                     if full_link.startswith('/'):
                         full_link = 'https://www.avito.ru' + full_link
+                    hash_input = title.get_text(strip=True) + full_link + (price.get_text(strip=True) if price else '')
+                    ad_hash = hashlib.md5(hash_input.encode()).hexdigest()
                     ads.append({
                         'title': title.get_text(strip=True),
                         'price': price.get_text(strip=True) if price else 'Цена не указана',
                         'link': full_link,
                         'image': image_url,
-                        'hash': hashlib.md5((title.get_text(strip=True) + full_link).encode()).hexdigest()
+                        'hash': ad_hash
                     })
+            logging.info(f"🔍 Найдено {len(ads)} объявлений на странице {url}")
             return ads
         except Exception as e:
             logging.error(f"Ошибка парсинга: {e}")
@@ -84,6 +87,7 @@ class AdvertisementMonitor:
                 seen_hashes = set(info.get('seen_hashes', []))
                 current_ads = self.get_ads_from_url(url)
                 fresh_ads = [ad for ad in current_ads if ad['hash'] not in seen_hashes]
+                logging.info(f"🆕 Найдено {len(fresh_ads)} новых объявлений для {user_id}")
                 if fresh_ads:
                     info['seen_hashes'].extend(ad['hash'] for ad in fresh_ads)
                     new_ads_found.append({'user_id': user_id, 'new_ads': fresh_ads})
@@ -183,10 +187,8 @@ async def main():
     asyncio.create_task(send_notifications(app))
     await app.run_polling()
 
-import asyncio
-import sys
-
 if __name__ == "__main__":
+    import sys
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
