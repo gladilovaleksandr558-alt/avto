@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from config import BOT_TOKEN, CHECK_INTERVAL
+from config import BOT_TOKEN
 import nest_asyncio
 
 nest_asyncio.apply()
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+CHECK_INTERVAL = 300  # 5 минут
 
 class AdvertisementMonitor:
     def __init__(self):
@@ -30,7 +32,7 @@ class AdvertisementMonitor:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         self.users_data[user_id]['tracking_urls'][url_hash] = {
             'url': url,
-            'last_ads': [],
+            'seen_hashes': [],
             'added_date': datetime.now().isoformat()
         }
         self.save_data()
@@ -79,16 +81,12 @@ class AdvertisementMonitor:
         for user_id, data in self.users_data.items():
             for url_hash, info in data['tracking_urls'].items():
                 url = info['url']
-                last_ads = info.get('last_ads', [])
+                seen_hashes = set(info.get('seen_hashes', []))
                 current_ads = self.get_ads_from_url(url)
-                if not current_ads:
-                    continue
-                current_hashes = {ad['hash'] for ad in current_ads}
-                last_hashes = {ad['hash'] for ad in last_ads}
-                new_ads = [ad for ad in current_ads if ad['hash'] not in last_hashes]
-                if new_ads:
-                    info['last_ads'] = current_ads
-                    new_ads_found.append({'user_id': user_id, 'url': url, 'new_ads': new_ads})
+                fresh_ads = [ad for ad in current_ads if ad['hash'] not in seen_hashes]
+                if fresh_ads:
+                    info['seen_hashes'].extend(ad['hash'] for ad in fresh_ads)
+                    new_ads_found.append({'user_id': user_id, 'new_ads': fresh_ads})
         if new_ads_found:
             self.save_data()
         return new_ads_found
@@ -97,7 +95,7 @@ monitor = AdvertisementMonitor()
 
 # Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Отправь ссылку на Avito, и я буду присылать новые объявления!")
+    await update.message.reply_text("👋 Отправь ссылку на Avito, и я буду присылать новые объявления каждые 5 минут!")
 
 async def add_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -106,10 +104,7 @@ async def add_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = ' '.join(context.args)
     user_id = update.effective_user.id
     url_hash = monitor.add_user_tracking(user_id, url)
-    ads = monitor.get_ads_from_url(url)
-    monitor.users_data[str(user_id)]['tracking_urls'][url_hash]['last_ads'] = ads
-    monitor.save_data()
-    await update.message.reply_text(f"✅ Ссылка добавлена! Найдено объявлений: {len(ads)}")
+    await update.message.reply_text(f"✅ Ссылка добавлена! Я начну отслеживать новые объявления.")
 
 async def list_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -139,40 +134,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text.startswith(('http://', 'https://')):
         user_id = update.effective_user.id
         url_hash = monitor.add_user_tracking(user_id, text)
-        ads = monitor.get_ads_from_url(text)
-        monitor.users_data[str(user_id)]['tracking_urls'][url_hash]['last_ads'] = ads
-        monitor.save_data()
-        await update.message.reply_text(f"✅ Ссылка добавлена! Найдено объявлений: {len(ads)}")
+        await update.message.reply_text(f"✅ Ссылка добавлена! Я начну отслеживать новые объявления.")
     else:
         await update.message.reply_text("Отправьте ссылку на страницу с объявлениями Avito.")
 
-async def force_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    new_ads = monitor.check_for_new_ads()
-    count = 0
-    for item in new_ads:
-        if item['user_id'] == user_id:
-            for ad in item['new_ads']:
-                msg = (
-                    f"<b>{ad['title']}</b>\n"
-                    f"💰 {ad['price']}\n"
-                    f"<a href='{ad['link']}'>Открыть объявление</a>"
-                )
-                try:
-                    if ad.get('image'):
-                        await update.message.reply_photo(
-                            photo=ad['image'],
-                            caption=msg,
-                            parse_mode="HTML"
-                        )
-                    else:
-                        await update.message.reply_text(msg, parse_mode="HTML")
-                    count += 1
-                except Exception as e:
-                    logging.error(f"Ошибка отправки: {e}")
-    if count == 0:
-        await update.message.reply_text("🔍 Новых объявлений не найдено.")
-
+# Цикл уведомлений каждые 5 минут
 async def send_notifications(app):
     while True:
         new_ads = monitor.check_for_new_ads()
@@ -203,6 +169,7 @@ async def send_notifications(app):
                     logging.error(f"Ошибка отправки: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
+# Railway-safe запуск
 async def main():
     if not BOT_TOKEN:
         logging.error("❌ BOT_TOKEN не задан. Проверь config.py или Railway Variables.")
@@ -213,7 +180,6 @@ async def main():
     app.add_handler(CommandHandler("add", add_url))
     app.add_handler(CommandHandler("list", list_tracking))
     app.add_handler(CommandHandler("remove", remove_tracking))
-    app.add_handler(CommandHandler("force", force_check))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logging.info("🤖 Бот запущен и готов к работе.")
