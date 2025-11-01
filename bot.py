@@ -57,10 +57,22 @@ class AdvertisementMonitor:
                 image_tag = ad.find('img')
                 image_url = image_tag['src'] if image_tag and image_tag.has_attr('src') else None
                 date_tag = ad.find('div', {'data-marker': 'item-date'})
+
+                # ⏱️ Фильтр: только объявления до 5 минут назад
                 if date_tag:
                     date_text = date_tag.get_text(strip=True).lower()
-                    if not any(x in date_text for x in ["сегодня", "только что"]):
+                    if "минут" in date_text:
+                        try:
+                            minutes_ago = int(date_text.split()[0])
+                            if minutes_ago > 5:
+                                continue
+                        except:
+                            continue
+                    elif "только что" in date_text:
+                        pass
+                    else:
                         continue
+
                 if title and link:
                     full_link = link['href']
                     if full_link.startswith('/'):
