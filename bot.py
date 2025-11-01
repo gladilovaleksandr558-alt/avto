@@ -207,19 +207,12 @@ async def main():
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
         logging.info("🤖 Бот запущен и готов к работе.")
-        await asyncio.gather(
-            send_notifications(app),
-            app.run_polling()
-        )
+
+        # Запускаем фоновую задачу
+        asyncio.create_task(send_notifications(app))
+
+        # Запускаем polling
+        await app.run_polling()
     except Exception as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
 
-# Railway-safe запуск
-if __name__ == "__main__":
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    except Exception as e:
-        logging.error(f"❌ Ошибка запуска бота: {e}")
-
-      
