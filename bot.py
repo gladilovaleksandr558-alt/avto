@@ -45,41 +45,41 @@ class AdvertisementMonitor:
         return False
 
     def get_ads_from_url(self, url):
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=30)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        ads = []
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=30)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            ads = []
 
-        for ad in soup.select('[data-marker="item"]')[:10]:
-            title = ad.find('h3') or ad.find('a', {'data-marker': 'item-title'})
-            price = ad.find('span', {'data-marker': 'item-price'})
-            link = ad.find('a', href=True)
-            image_tag = ad.find('img')
-            image_url = image_tag['src'] if image_tag and image_tag.has_attr('src') else None
-            date_tag = ad.find('div', {'data-marker': 'item-date'})
+            for ad in soup.select('[data-marker="item"]')[:10]:
+                title = ad.find('h3') or ad.find('a', {'data-marker': 'item-title'})
+                price = ad.find('span', {'data-marker': 'item-price'})
+                link = ad.find('a', href=True)
+                image_tag = ad.find('img')
+                image_url = image_tag['src'] if image_tag and image_tag.has_attr('src') else None
+                date_tag = ad.find('div', {'data-marker': 'item-date'})
 
-            # ⏱️ Фильтр: объявления до 2 часов назад
-            if date_tag:
-                date_text = date_tag.get_text(strip=True).lower()
-                if "минут" in date_text:
-                    try:
-                        minutes_ago = int(date_text.split()[0])
-                        if minutes_ago > 120:
+                # ⏱️ Фильтр: объявления до 2 часов назад
+                if date_tag:
+                    date_text = date_tag.get_text(strip=True).lower()
+                    if "минут" in date_text:
+                        try:
+                            minutes_ago = int(date_text.split()[0])
+                            if minutes_ago > 120:
+                                continue
+                        except:
                             continue
-                    except:
-                        continue
-                elif "час" in date_text:
-                    try:
-                        hours_ago = int(date_text.split()[0])
-                        if hours_ago > 2:
+                    elif "час" in date_text:
+                        try:
+                            hours_ago = int(date_text.split()[0])
+                            if hours_ago > 2:
+                                continue
+                        except:
                             continue
-                    except:
+                    elif "только что" in date_text:
+                        pass
+                    else:
                         continue
-                elif "только что" in date_text:
-                    pass
-                else:
-                    continue
 
                 if title and link:
                     full_link = link['href']
@@ -117,7 +117,6 @@ class AdvertisementMonitor:
         return new_ads_found
 
 monitor = AdvertisementMonitor()
-
 # Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Отправь ссылку на страницу с объявлениями Avito, и я буду присылать уведомления о новых!")
