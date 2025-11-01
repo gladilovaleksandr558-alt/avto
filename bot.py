@@ -161,6 +161,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Отправьте ссылку на страницу с объявлениями Avito.")
 
+# ✅ Команда /force — ручная проверка
+async def force_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    new_ads = monitor.check_for_new_ads()
+    count = 0
+    for item in new_ads:
+        if item['user_id'] == user_id:
+            for ad in item['new_ads']:
+                msg = (
+                    f"<b>{ad['title']}</b>\n"
+                    f"💰 {ad['price']}\n"
+                    f"<a href='{ad['link']}'>Открыть объявление</a>"
+                )
+                try:
+                    if ad.get('image'):
+                        await update.message.reply_photo(
+                            photo=ad['image'],
+                            caption=msg,
+                            parse_mode="HTML"
+                        )
+                    else:
+                        await update.message.reply_text(msg, parse_mode="HTML")
+                    count += 1
+                except Exception as e:
+                    logging.error(f"Ошибка отправки: {e}")
+    if count == 0:
+        await update.message.reply_text("🔍 Новых объявлений не найдено.")
+
 # Цикл уведомлений
 async def send_notifications(app):
     while True:
@@ -203,6 +231,7 @@ async def main():
     app.add_handler(CommandHandler("add", add_url))
     app.add_handler(CommandHandler("list", list_tracking))
     app.add_handler(CommandHandler("remove", remove_tracking))
+    app.add_handler(CommandHandler("force", force_check))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logging.info("🤖 Бот запущен и готов к работе.")
