@@ -1,4 +1,4 @@
-import requests, hashlib, json, os, asyncio, logging, threading
+import requests, hashlib, json, os, asyncio, logging
 from bs4 import BeautifulSoup
 from datetime import datetime
 from telegram import Update
@@ -52,14 +52,11 @@ class AdvertisementMonitor:
                 title = ad.find('h3') or ad.find('a', {'data-marker': 'item-title'})
                 price = ad.find('span', {'data-marker': 'item-price'})
                 link = ad.find('a', href=True)
-                date_tag = ad.find('div', {'data-marker': 'item-date'})  # 📅 дата публикации
-
-                # Фильтрация: только "сегодня" или "только что"
+                date_tag = ad.find('div', {'data-marker': 'item-date'})
                 if date_tag:
                     date_text = date_tag.get_text(strip=True).lower()
                     if not any(x in date_text for x in ["сегодня", "только что"]):
-                        continue  # ❌ пропускаем старые объявления
-
+                        continue
                 if title and link:
                     full_link = link['href']
                     if full_link.startswith('/'):
@@ -96,7 +93,7 @@ class AdvertisementMonitor:
 
 monitor = AdvertisementMonitor()
 
-# Команды Telegram
+# Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Отправь ссылку на страницу с объявлениями, и я буду присылать уведомления о новых!")
 
@@ -157,25 +154,29 @@ async def send_notifications(app):
                 msg = f"📌 {ad['title']}\n💰 {ad['price']}\n🔗 {ad['link']}"
                 try:
                     await app.bot.send_message(chat_id=user_id, text=msg)
-                    await asyncio.sleep(1.5)  # Задержка между сообщениями
+                    await asyncio.sleep(1.5)
                 except Exception as e:
                     logging.error(f"Ошибка отправки: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
 # Запуск бота
-def main():
+async def main():
     if BOT_TOKEN == "8041824382:AAEQRFNdN-nfaX7e6PhBoHs1FkQ13gVBCrw":
         print("❌ Укажи токен в config.py")
         return
+
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("add", add_url))
     app.add_handler(CommandHandler("list", list_tracking))
     app.add_handler(CommandHandler("remove", remove_tracking))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    threading.Thread(target=lambda: asyncio.run(send_notifications(app)), daemon=True).start()
+
     print("🤖 Бот запущен...")
-    app.run_polling()
+    await asyncio.gather(
+        send_notifications(app),
+        app.run_polling()
+    )
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
