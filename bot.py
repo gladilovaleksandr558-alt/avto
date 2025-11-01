@@ -200,4 +200,12 @@ async def main():
             app.run_polling()
         )
     except Exception as e:
-        logging.error(f"
+       logging.error(f"❌ Ошибка запуска бота: {e}")
+
+# Railway-safe запуск
+if __name__ == "__main__":
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+    except Exception as e:
+        logging.error(f"❌ Ошибка запуска бота: {e}")
