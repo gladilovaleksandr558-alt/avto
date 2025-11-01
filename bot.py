@@ -59,19 +59,25 @@ class AdvertisementMonitor:
                 date_tag = ad.find('div', {'data-marker': 'item-date'})
 
                 # ⏱️ Фильтр: только объявления до 5 минут назад
-                if date_tag:
-                    date_text = date_tag.get_text(strip=True).lower()
-                    if "минут" in date_text:
-                        try:
-                            minutes_ago = int(date_text.split()[0])
-                            if minutes_ago > 5:
-                                continue
-                        except:
-                            continue
-                    elif "только что" in date_text:
-                        pass
-                    else:
-                        continue
+               if "минут" in date_text:
+    try:
+        minutes_ago = int(date_text.split()[0])
+        if minutes_ago > 120:  # ⏱️ 2 часа = 120 минут
+            continue
+    except:
+        continue
+elif "час" in date_text:
+    try:
+        hours_ago = int(date_text.split()[0])
+        if hours_ago > 2:
+            continue
+    except:
+        continue
+elif "только что" in date_text:
+    pass
+else:
+    continue
+
 
                 if title and link:
                     full_link = link['href']
