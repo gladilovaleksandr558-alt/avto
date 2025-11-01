@@ -4,6 +4,9 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from config import BOT_TOKEN, CHECK_INTERVAL
+import nest_asyncio
+
+nest_asyncio.apply()
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -160,7 +163,7 @@ async def send_notifications(app):
         await asyncio.sleep(CHECK_INTERVAL)
 
 # Запуск бота
-async def run_bot():
+async def main():
     if not BOT_TOKEN:
         logging.error("❌ Переменная BOT_TOKEN не задана. Проверь config.py и Railway Variables.")
         return
@@ -181,8 +184,6 @@ async def run_bot():
     except Exception as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(run_bot())
-    except RuntimeError as e:
-        logging.error(f"⚠️ Ошибка запуска: {e}")
+# Railway-safe запуск
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
