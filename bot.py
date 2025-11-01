@@ -164,7 +164,7 @@ async def send_notifications(app):
 
 # Запуск бота
 def main():
-    if BOT_TOKEN == "ТВОЙ_ТОКЕН_ОТ_BOTFATHER":
+    if BOT_TOKEN == "8041824382:AAEQRFNdN-nfaX7e6PhBoHs1FkQ13gVBCrw":
         print("❌ Укажи токен в config.py")
         return
     app = Application.builder().token(BOT_TOKEN).build()
