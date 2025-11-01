@@ -160,7 +160,7 @@ async def send_notifications(app):
         await asyncio.sleep(CHECK_INTERVAL)
 
 # Запуск бота
-async def main():
+async def run_bot():
     if not BOT_TOKEN:
         logging.error("❌ Переменная BOT_TOKEN не задана. Проверь config.py и Railway Variables.")
         return
@@ -175,11 +175,14 @@ async def main():
 
         logging.info("🤖 Бот запущен и готов к работе.")
         await asyncio.gather(
-            send_notifications(app),  # ✅ правильное имя функции
+            send_notifications(app),
             app.run_polling()
         )
     except Exception as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(run_bot())
+    except RuntimeError as e:
+        logging.error(f"⚠️ Ошибка запуска: {e}")
