@@ -55,6 +55,8 @@ class AdvertisementMonitor:
                 title = ad.find('h3') or ad.find('a', {'data-marker': 'item-title'})
                 price = ad.find('span', {'data-marker': 'item-price'})
                 link = ad.find('a', href=True)
+                image_tag = ad.find('img')
+                image_url = image_tag['src'] if image_tag and image_tag.has_attr('src') else None
                 date_tag = ad.find('div', {'data-marker': 'item-date'})
                 if date_tag:
                     date_text = date_tag.get_text(strip=True).lower()
@@ -68,6 +70,7 @@ class AdvertisementMonitor:
                         'title': title.get_text(strip=True),
                         'price': price.get_text(strip=True) if price else 'Цена не указана',
                         'link': full_link,
+                        'image': image_url,
                         'hash': hashlib.md5((title.get_text(strip=True) + full_link).encode()).hexdigest()
                     })
             return ads
@@ -98,11 +101,11 @@ monitor = AdvertisementMonitor()
 
 # Telegram команды
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Отправь ссылку на страницу с объявлениями, и я буду присылать уведомления о новых!")
+    await update.message.reply_text("👋 Отправь ссылку на страницу с объявлениями Avito, и я буду присылать уведомления о новых!")
 
 async def add_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("❌ Укажите ссылку после команды:\n/add https://example.com")
+        await update.message.reply_text("❌ Укажите ссылку после команды:\n/add https://avito.ru/...")
         return
     url = ' '.join(context.args)
     user_id = update.effective_user.id
@@ -110,7 +113,7 @@ async def add_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ads = monitor.get_ads_from_url(url)
     monitor.users_data[str(user_id)]['tracking_urls'][url_hash]['last_ads'] = ads
     monitor.save_data()
-    await update.message.reply_text(f"✅ Ссылка добавлена! Найдено новых объявлений: {len(ads)}")
+    await update.message.reply_text(f"✅ Ссылка добавлена! Найдено объявлений: {len(ads)}")
 
 async def list_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -143,9 +146,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ads = monitor.get_ads_from_url(text)
         monitor.users_data[str(user_id)]['tracking_urls'][url_hash]['last_ads'] = ads
         monitor.save_data()
-        await update.message.reply_text(f"✅ Ссылка добавлена! Найдено новых объявлений: {len(ads)}")
+        await update.message.reply_text(f"✅ Ссылка добавлена! Найдено объявлений: {len(ads)}")
     else:
-        await update.message.reply_text("Отправьте ссылку на страницу с объявлениями.")
+        await update.message.reply_text("Отправьте ссылку на страницу с объявлениями Avito.")
 
 # Цикл уведомлений
 async def send_notifications(app):
@@ -156,7 +159,10 @@ async def send_notifications(app):
             for ad in item['new_ads']:
                 msg = f"📌 {ad['title']}\n💰 {ad['price']}\n🔗 {ad['link']}"
                 try:
-                    await app.bot.send_message(chat_id=user_id, text=msg)
+                    if ad.get('image'):
+                        await app.bot.send_photo(chat_id=user_id, photo=ad['image'], caption=msg)
+                    else:
+                        await app.bot.send_message(chat_id=user_id, text=msg)
                     await asyncio.sleep(1.5)
                 except Exception as e:
                     logging.error(f"Ошибка отправки: {e}")
