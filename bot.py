@@ -181,26 +181,10 @@ async def send_notifications(app):
                     logging.error(f"Ошибка отправки: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
-# Запуск бота
-async def main():
-    if not BOT_TOKEN:
-        logging.error("❌ Переменная BOT_TOKEN не задана. Проверь config.py и Railway Variables.")
-        return
-
+# Railway-safe запуск
+if __name__ == "__main__":
     try:
-        app = Application.builder().token(BOT_TOKEN).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CommandHandler("add", add_url))
-        app.add_handler(CommandHandler("list", list_tracking))
-        app.add_handler(CommandHandler("remove", remove_tracking))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-        logging.info("🤖 Бот запущен и готов к работе.")
-        await asyncio.gather(
-            send_notifications(app),
-            app.run_polling()
-        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
     except Exception as e:
         logging.error(f"❌ Ошибка запуска бота: {e}")
-
-#
